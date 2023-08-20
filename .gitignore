@@ -1,0 +1,19 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/src/Apps/Presentation/bin/Debug/net7.0
+/src/Apps/Presentation/obj
+/src/Layers/Business/bin/Debug/net7.0
+/src/Layers/Business/obj
+/src/Layers/Common/bin/Debug/net7.0
+/src/Layers/Common/obj
+/src/Layers/Core/bin/Debug/net7.0
+/src/Layers/Core/obj
+/src/Layers/Domains/Dtos/bin/Debug/net7.0
+/src/Layers/Domains/Dtos/obj
+/src/Layers/Domains/Entities/obj
+/src/Workers/MonitorService/bin/Debug/net7.0
+/src/Workers/MonitorService/obj
+/.vs
+/src/Layers/Domains/Entities/bin/Debug/net7.0
