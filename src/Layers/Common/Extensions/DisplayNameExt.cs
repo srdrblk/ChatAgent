@@ -1,16 +1,16 @@
-﻿using Common.Attributes;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace Common.Extensions
 {
-    public static class EffenciencyExt
+    public static class DisplayNameExt
     {
-        public static double? GetEffenciency(this Enum enm)
+        public static string GetDisplayName(this Enum enm)
         {
             return enm.GetType()?
           .GetMember(enm.ToString()).First()?
-          .GetCustomAttribute<Efficiency>()?
-          .Value;
+          .GetCustomAttribute<DisplayAttribute>()?
+          .Name;
         }
     }
 }

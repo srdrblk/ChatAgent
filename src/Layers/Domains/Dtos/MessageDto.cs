@@ -6,5 +6,6 @@ namespace Dtos
     {
         public required string Text { get; set; }
         public MessageDirection Direction { get; set; }
+        public long ChatId { get; set; }
     }
 }

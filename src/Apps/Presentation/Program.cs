@@ -1,8 +1,11 @@
+using AgentCoordinateWorker;
 using Business.IServices;
 using Business.Queues;
 using Business.Services;
+using Core.Context;
 using Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -34,6 +37,16 @@ builder.Services.AddSwaggerGen(c =>
                 }
             });
         });
+var conn = builder.Configuration.GetConnectionString("ChatContext");
+builder.Services.AddDbContext<AgentContext>(option =>
+{
+    option.UseSqlServer(conn);
+    option.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    option.EnableSensitiveDataLogging();
+});
+
+
+
 var appSettingsSection = builder.Configuration.GetSection("AppSettings");
 builder.Services.Configure<AppSettings>(appSettingsSection);
 var appSettings = appSettingsSection.Get<AppSettings>();
@@ -56,16 +69,21 @@ builder.Services.AddAuthentication(x =>
                        ValidateAudience = false
                    };
                });
-
-
-
-builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddSingleton<SupportQueue>();
+//builder.Services.AddScoped<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddScoped<ChatQueue>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ISupportService, SupportService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<ITeamService, TeamService>();
+builder.Services.AddScoped<IChatHubService, ChatHubService>(); 
+builder.Services.AddScoped<IAgentChatCoordinatorService, AgentChatCoordinatorService>();
+builder.Services.AddSignalR();
+
+builder.Services.AddHostedService<MonitorService.Monitor>();
+builder.Services.AddHostedService<AgentChatCoordinator>();
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

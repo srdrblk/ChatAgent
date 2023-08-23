@@ -17,3 +17,7 @@
 /src/Workers/MonitorService/obj
 /.vs
 /src/Layers/Domains/Entities/bin/Debug/net7.0
+/src/Workers/AgentCoordinateWorker/bin/Debug/net7.0
+/src/Workers/AgentCoordinateWorker/obj
+/test/BusinessTest/bin/Debug/net7.0
+/test/BusinessTest/obj

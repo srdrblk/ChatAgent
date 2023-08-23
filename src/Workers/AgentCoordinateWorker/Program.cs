@@ -1,9 +1,9 @@
-using MonitorService;
+using AgentCoordinateWorker;
 
 IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
-        services.AddHostedService<MonitorService.Monitor>();
+        services.AddHostedService<AgentChatCoordinator>();
     })
     .Build();
 

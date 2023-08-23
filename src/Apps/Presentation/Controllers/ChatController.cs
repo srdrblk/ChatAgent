@@ -23,28 +23,11 @@ namespace Presentation.Controllers
         [Roles(RoleType.User, RoleType.Agent)]
         public IActionResult SendMessage([FromBody] MessageDto messageDto)
         {
-            var chatId = Guid.NewGuid();
             var messageDirection = User.IsInRole(RoleType.User.GetDisplayName()) ? MessageDirection.InComming : MessageDirection.OutGoing;
-            var message = new Message() { Text = messageDto.Text, Id = Guid.NewGuid(), Direction = messageDirection };
-            chatService.AddMessageToChat(chatId, message);
+            var message = new Message() { Text = messageDto.Text, Direction = messageDirection, ChatId = messageDto.ChatId };
+            chatService.AddMessageToChat(messageDto.ChatId, message);
             return new ObjectResult("test");
         }
 
-        [HttpPost]
-        [Route("testagent")]
-        [Roles(RoleType.Agent)]
-        public IActionResult testagent()
-        {
-            var t = User.IsInRole(RoleType.Agent.GetDisplayName());
-            return Ok("Agent : " + t);
-        }
-        [HttpPost]
-        [Route("testuser")]
-        [Roles(RoleType.User)]
-        public IActionResult testuser()
-        {
-            var t = User.IsInRole(RoleType.Agent.GetDisplayName());
-            return Ok("user : " + t);
-        }
     }
 }

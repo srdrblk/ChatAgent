@@ -4,14 +4,14 @@ using System.Reflection;
 
 namespace Common.Extensions
 {
-    public static class DisplayNameExt
+    public static class EffenciencyExt
     {
-        public static string GetDisplayName(this Enum enm)
+        public static double? GetEffenciency(this Enum enm)
         {
             return enm.GetType()?
           .GetMember(enm.ToString()).First()?
-          .GetCustomAttribute<DisplayAttribute>()?
-          .Name;
+          .GetCustomAttribute<Efficiency>()?
+          .Value;
         }
     }
 }

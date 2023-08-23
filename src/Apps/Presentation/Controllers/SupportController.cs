@@ -1,8 +1,6 @@
 ﻿using Business.IServices;
 using Dtos;
-using Entities;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
@@ -10,25 +8,27 @@ namespace Presentation.Controllers
     public class SupportController : Controller
     {
         ISupportService supportService;
+        IChatService chatService;
         IAuthenticationService authenticationService;
-        public SupportController(ISupportService _supportService, IAuthenticationService _authenticationService)
+        public SupportController(ISupportService _supportService, IAuthenticationService _authenticationService, IChatService _chatService)
         {
             supportService = _supportService;
             authenticationService = _authenticationService;
+            chatService = _chatService;
+
         }
         [HttpPost]
         [Route("CreateSupport")]
         public async Task<IActionResult> CreateSupport([FromBody] SupportDto supportDto)
         {
-            var token = "";
             var isSupportAvailable = await supportService.CheckCreateSupportIsAvailable();
             if (isSupportAvailable)
             {
                 var authenticationDto = authenticationService.Authenticate(supportDto?.User?.FullName, Common.Enums.RoleType.User);
             
-                await supportService.CreateSupport(supportDto, authenticationDto.UserId);
+                await chatService.CreateChat(supportDto, authenticationDto.UserId);
 
-                return Ok(token);
+                return Ok(authenticationDto.Token);
             }
 
             return NotFound("Rejected");

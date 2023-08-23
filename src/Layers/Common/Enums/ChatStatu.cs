@@ -2,10 +2,9 @@
 {
     public enum ChatStatu
     {
-        Active = 0,
-        ClosedDueToWaiting = 1,
-        SupportCompleted = 2
-       
-
+        WaitingOnQueue = 0,
+        Active = 1,
+        ClosedDueToWaiting = 2,
+        SupportCompleted = 3
     }
 }

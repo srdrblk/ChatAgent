@@ -1,5 +1,7 @@
 ﻿using Business.IServices;
+using Business.Queues;
 using Common.Enums;
+using Core.Context;
 using Dtos;
 using Entities;
 
@@ -7,56 +9,82 @@ namespace Business.Services
 {
     public class ChatService : IChatService
     {
-        private List<Chat> Chats = new List<Chat>();
-        private int WaitingDurationLimit = 3;
-        public ChatService()
-        {
 
+        private AgentContext context { get; set; }
+        private int WaitingDurationLimit = 3;
+        ChatQueue chatQueue;
+        private ITeamService teamService;
+        private IChatHubService chatHubService;
+        public ChatService(ChatQueue _chatQueue, AgentContext _context, ITeamService _teamService, IChatHubService _chatHubService)
+        {
+            chatQueue = _chatQueue;
+            context = _context;
+            teamService = _teamService;
+            chatHubService = _chatHubService;
+        }
+        public async Task<BaseResponse<string>> CreateChat(SupportDto supportDto, long userId)
+        {
+            try
+            {
+                var support = new Chat()
+                {
+                    Subject = supportDto.Subject,
+                    CreatedDate = DateTime.Now,
+                    User = new User()
+                    {
+                        Id = userId,
+                        FullName = supportDto.User.FullName,
+                    },
+
+
+                };
+                chatQueue.AddChatToQueue(support);
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return await Task.Run(() => new BaseResponse<string> { Statu = Common.Enums.ResponseStatu.Success });
         }
         public async Task AddChat(Chat chat)
         {
-            chat.Id = Guid.NewGuid();
-            Chats.Add(chat);
+
+            context.Chats.Add(chat);
+            await context.SaveChangesAsync();
         }
-        public async Task<BaseResponse<Message>> AddMessageToChat(Guid chatId, Message message)
+        public async Task<BaseResponse<Message>> AddMessageToChat(long chatId, Message message)
         {
             var response = new BaseResponse<Message>();
-            var chat = Chats.FirstOrDefault(c => c.Id == chatId);
-            if (chat == null)
+            var chat = context.Chats.FirstOrDefault(c => c.Id == message.ChatId);
+            if (chat == null || chat.Statu != ChatStatu.Active)
             {
                 response.Statu = ResponseStatu.Error;
                 response.Message = "Chat is not exist!";
                 return response;
             }
-            chat.Messages.Enqueue(message);
+            context.Messages.Add(message);
+            await context.SaveChangesAsync();
             response.Statu = ResponseStatu.Success;
+
             return response;
 
         }
-        public async Task ChatCompleted(Guid chatId)
+        public async Task ChatCompleted(long chatId)
         {
-            var chat = Chats.FirstOrDefault(c => c.Id == chatId);
-            Chats.Remove(chat);
-            chat.Statu = ChatStatu.SupportCompleted;
-            //log chat
-        }
-        private async Task ChatClosedDueToWaiting(List<Guid> chatIdsWillCloseDueToWaiting)
-        {
-            await Task.Run(() =>
-                   action(chatIdsWillCloseDueToWaiting)
-            );
 
-            void action(List<Guid> chatIds)
+            var chat = context.Chats.FirstOrDefault(c => c.Id == chatId);
+            if (chat != null)
             {
-                var chatsThatWillNotBeDeleted = Chats.Where(c => !chatIds.Contains(c.Id)).ToList();
-                Chats = chatsThatWillNotBeDeleted;
-            };
-
+                chat.Statu = ChatStatu.SupportCompleted;
+                await context.SaveChangesAsync();
+            }
         }
+
         public async Task CheckDelayOfChats()
         {
-            var chats = Chats.Where(c => c.Statu == ChatStatu.Active);
-            var chatIdsWillCloseDueToWaiting = new List<Guid>();
+            var chats = context.Chats.Where(c => c.Statu == ChatStatu.Active);
+            var chatIdsWillCloseDueToWaiting = new List<long>();
             foreach (var chat in chats)
             {
                 chat.WaitingDuration++;
@@ -65,12 +93,11 @@ namespace Business.Services
                     chat.Statu = ChatStatu.ClosedDueToWaiting;
                     chatIdsWillCloseDueToWaiting.Add(chat.Id);
                     //log chat
-
                 }
-                await ChatClosedDueToWaiting(chatIdsWillCloseDueToWaiting);
-
-
             }
+            await context.SaveChangesAsync();
+
         }
+
     }
 }
