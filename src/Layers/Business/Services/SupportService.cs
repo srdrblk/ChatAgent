@@ -1,21 +1,35 @@
 ﻿using Business.IServices;
-using Business.Queues;
-using Dtos;
-using Entities;
+using Common.Enums;
 
 namespace Business.Services
 {
     public class SupportService : ISupportService
     {
-        ChatQueue chatQueue;
-        public SupportService(ChatQueue _chatQueue)
+
+        ITeamService teamService;
+        public SupportService(ITeamService _teamService)
         {
-            chatQueue = _chatQueue;
+            teamService = _teamService;
         }
 
         public async Task<bool> CheckCreateSupportIsAvailable()
         {
-            return await Task.Run(() => true);
+            var availableAgent = await teamService.GetAvailableAgent();
+            if (availableAgent == null)
+            {
+                return true;
+            }
+            var currentShift = await teamService.GetTeamTypeForCurrentShift();
+            if (TeamShiftType.DayShift == currentShift)
+            {
+                var overflowTeamIsActive = await teamService.CheckTeamIsActiveByTeamShiftType(TeamShiftType.Overflow);
+                if (!overflowTeamIsActive)
+                {
+                    return true;
+                }
+            }
+
+            return await Task.Run(() => false);
         }
     }
 }

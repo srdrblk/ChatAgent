@@ -6,7 +6,7 @@ namespace Entities
     {
         public List<Agent> Agents { get; set; }
         public required string Name { get; set; }
-        public TeamType Type { get; set; }
+        public TeamShiftType Type { get; set; }
         public TeamStatus Status { get; set; }
     }
 }

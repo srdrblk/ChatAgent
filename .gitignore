@@ -21,3 +21,5 @@
 /src/Workers/AgentCoordinateWorker/obj
 /test/BusinessTest/bin/Debug/net7.0
 /test/BusinessTest/obj
+/src/Workers/ShiftControlWorker/bin/Debug/net7.0
+/src/Workers/ShiftControlWorker/obj

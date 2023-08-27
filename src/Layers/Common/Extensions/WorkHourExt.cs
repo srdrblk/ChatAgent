@@ -17,7 +17,7 @@ namespace Common.Extensions
             return enm.GetType()?
           .GetMember(enm.ToString()).First()?
           .GetCustomAttribute<WorkHour>()?
-          .Start;
+          .End;
         }
     }
 }

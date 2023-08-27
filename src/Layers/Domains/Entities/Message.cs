@@ -1,4 +1,5 @@
 ﻿using Common.Enums;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Entities
 {
@@ -8,5 +9,8 @@ namespace Entities
         public MessageDirection Direction { get; set; }
         public DateTime CreatedDate { get; set; }
         public long ChatId { get; set; }
+
+        [ForeignKey("ChatId")]
+        public  Chat Chat { get; set; }
     }
 }

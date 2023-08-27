@@ -26,7 +26,7 @@ namespace Presentation.Controllers
             {
                 var authenticationDto = authenticationService.Authenticate(supportDto?.User?.FullName, Common.Enums.RoleType.User);
             
-                await chatService.CreateChat(supportDto, authenticationDto.UserId);
+                await chatService.AddChatToQueue(supportDto, authenticationDto.UserId);
 
                 return Ok(authenticationDto.Token);
             }

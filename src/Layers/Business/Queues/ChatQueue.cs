@@ -8,6 +8,13 @@ namespace Business.Queues
         private Queue<Chat> Queue { get; set; } = new Queue<Chat>();
         public ChatQueue() { }
 
+        public int Count
+        {
+            get
+            {
+                return Queue.Count;
+            }
+        }
         public void AddChatToQueue(Chat chat)
         {
             Queue.Enqueue(chat);

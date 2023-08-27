@@ -1,5 +1,6 @@
 ﻿using Business.IServices;
 using Dtos;
+using Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers
@@ -14,6 +15,17 @@ namespace Presentation.Controllers
         {
             teamService = _teamService;
         }
-     
+        [HttpPost]
+        [Route("ActivateOverflowTeam")]
+        public async Task<BaseResponse<bool>> ActivateOverflowTeam()
+        {
+            return await teamService.ActivateOverflowTeam();
+        }
+        [HttpPost]
+        [Route("ActivateTeam")]
+        async Task<BaseResponse<Team>> ActivateTeam()
+        {
+            return await teamService.ActivateTeam();
+        }
     }
 }

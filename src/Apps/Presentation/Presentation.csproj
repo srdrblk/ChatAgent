@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Layers\Business\Business.csproj" />
     <ProjectReference Include="..\..\Workers\AgentCoordinateWorker\AgentCoordinateWorker.csproj" />
     <ProjectReference Include="..\..\Workers\MonitorService\MonitorWorker.csproj" />
+    <ProjectReference Include="..\..\Workers\ShiftControlWorker\ShiftControlWorker.csproj" />
   </ItemGroup>
 
 </Project>

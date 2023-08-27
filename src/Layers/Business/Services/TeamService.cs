@@ -5,6 +5,7 @@ using Core.Context;
 using Dtos;
 using Entities;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace Business.Services
 {
@@ -16,109 +17,195 @@ namespace Business.Services
         {
             context = _context;
         }
-
-        public async Task<BaseResponse<bool>> ActivateTeam()
+        public async Task<TeamShiftType> GetTeamTypeForCurrentShift()
+        {
+            var currentHour = DateTime.Now.Hour;
+            var teamType = TeamShiftType.None;
+            if (TeamShiftType.DayShift.GetStartHour() <= currentHour && TeamShiftType.DayShift.GetEndHour() >= currentHour)
+            {
+                teamType = TeamShiftType.DayShift;
+            }
+            else if (TeamShiftType.EveningShift.GetStartHour() <= currentHour && TeamShiftType.EveningShift.GetEndHour() >= currentHour)
+            {
+                teamType = TeamShiftType.EveningShift;
+            }
+            else if (TeamShiftType.NightShift.GetStartHour() <= currentHour && TeamShiftType.NightShift.GetEndHour() >= currentHour)
+            {
+                teamType = TeamShiftType.NightShift;
+            }
+            else
+            {
+                teamType = TeamShiftType.None;
+            }
+            return await Task.Run(() => teamType);
+        }
+        public async Task<BaseResponse<Team>> ActivateTeam()
         {
 
             var currentHour = DateTime.Now.Hour;
-            var teamType = TeamType.None;
+            var teamType = await GetTeamTypeForCurrentShift();
 
-            if (TeamType.DayShift.GetStartHour() <= currentHour && TeamType.DayShift.GetEndHour() >= currentHour)
+            if (teamType == TeamShiftType.None)
             {
-                teamType = TeamType.DayShift;
+                return new BaseResponse<Team>() { Statu = ResponseStatu.Error, Message = "There is a problem with the shift hours!" };
             }
-            if (TeamType.EveningShift.GetStartHour() <= currentHour && TeamType.EveningShift.GetEndHour() >= currentHour)
-            {
-                teamType = TeamType.EveningShift;
-            }
-            if (TeamType.NightShift.GetStartHour() <= currentHour && TeamType.NightShift.GetEndHour() >= currentHour)
-            {
-                teamType = TeamType.NightShift;
-            }
-            if (teamType == TeamType.None)
-            {
-                return new BaseResponse<bool>() { Data = false, Message = "There is a problem with the shift hours!" };
-            }
-            var activeTeam = context.Teams.FirstOrDefault(t => t.Status == TeamStatus.Active);
+            var activeTeam = await context.Teams.Include(t => t.Agents).ThenInclude(a => a.Chat).SingleOrDefaultAsync(t => t.Status == TeamStatus.Active && t.Type != TeamShiftType.Overflow);
             if (activeTeam != null)
             {
-                // TODO : get active support chats
-                var activeSupport = new List<Support>();
-                if (activeSupport.Any())
-                {
-                    activeTeam.Status = TeamStatus.WaitingActiveChats;
-                }
-                else
-                {
-                    activeTeam.Status = TeamStatus.Passive;
-                }
-
+                var haveActiveChat = activeTeam.Agents.Any() && activeTeam.Agents.Any(a => a.Chat.Any(c => c.Statu == ChatStatu.Active));
+                activeTeam.Status = haveActiveChat ? TeamStatus.WaitingActiveChats : TeamStatus.Passive;
             }
 
-            var team = context.Teams.FirstOrDefault(t => t.Type == teamType);
+            var team = await context.Teams.SingleOrDefaultAsync(t => t.Type == teamType);
             if (team != null)
             {
                 team.Status = TeamStatus.Active;
-            }
+                await context.SaveChangesAsync();
 
-            return await Task.Run(() => new BaseResponse<bool>()
-            {
-                Data = true,
-                Message = teamType.GetDisplayName() + " is activated!"
-            });
+                return await Task.Run(() => new BaseResponse<Team>()
+                {
+                    Data = team,
+                    Statu = ResponseStatu.Success,
+                    Message = teamType.GetDisplayName() + " is activated!"
+                });
+            }
+            return new BaseResponse<Team>() { Statu = ResponseStatu.Error, Message = "Can't find Team by current shift ()!" };
+
+
         }
         public async Task<BaseResponse<bool>> ActivateOverflowTeam()
         {
-            var overflowTeam = context.Teams.FirstOrDefault(t => t.Type == TeamType.Overflow);
+            var overflowTeam = await context.Teams.SingleOrDefaultAsync(t => t.Type == TeamShiftType.Overflow);
 
             if (overflowTeam == null)
             {
                 return await Task.Run(() => new BaseResponse<bool>()
                 {
                     Data = false,
-                    Message = "Can not find " + TeamType.Overflow.GetDisplayName()
+                    Message = "Can not find " + TeamShiftType.Overflow.GetDisplayName()
                 });
             }
 
             overflowTeam.Status = TeamStatus.Active;
+            try
+            {
+                context.Entry(overflowTeam).State = EntityState.Modified;
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
 
             return await Task.Run(() => new BaseResponse<bool>()
             {
                 Data = true,
-                Message = TeamType.Overflow.GetDisplayName() + " is activated!"
+                Message = TeamShiftType.Overflow.GetDisplayName() + " is activated!"
             });
         }
-        private bool CheckAgentChatAvailability(Agent agent)
+        public async Task<BaseResponse<bool>> DeActivateOverflowTeam()
         {
-            var effenciency = agent.Type.GetEffenciency();
-            var maxChatCount = MaximumConcurrency * effenciency;
+            var overflowTeam = await context.Teams.SingleOrDefaultAsync(t => t.Type == TeamShiftType.Overflow);
 
-            return maxChatCount > agent.Chat.Count ? true : false;
+            if (overflowTeam == null)
+            {
+                return await Task.Run(() => new BaseResponse<bool>()
+                {
+                    Data = false,
+                    Message = "Can not find " + TeamShiftType.Overflow.GetDisplayName()
+                });
+            }
+
+            overflowTeam.Status = TeamStatus.Passive;
+            try
+            {
+                context.Entry(overflowTeam).State = EntityState.Modified;
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return await Task.Run(() => new BaseResponse<bool>()
+            {
+                Data = true,
+                Message = TeamShiftType.Overflow.GetDisplayName() + " is activated!"
+            });
         }
-        public async Task<List<Agent>> CheckMainTeamAgents()
+        public async Task<bool> GetAgentChatAvailability(Agent agent)
+        {
+            var maxChatCount = MaximumConcurrency * agent.Type.GetEffenciency();
+
+            return await Task.Run(() => maxChatCount > agent.Chat.Count ? true : false);
+        }
+        public async Task<List<Agent>> GetActiveTeamAgents()
         {
             var agents = new List<Agent>();
-            var team = await context.Teams.Include(t => t.Agents).ThenInclude(chat => chat.Chat).FirstOrDefaultAsync(t => t.Status == TeamStatus.Active && t.Type != TeamType.Overflow);
-            foreach (var agent in team.Agents)
-            {
-
-                if (CheckAgentChatAvailability(agent))
+            var team = await context.Teams.Select(t =>
+                new Team()
                 {
-                    agents.Add(agent);
+                    Name = t.Name,
+                    Agents = t.Agents.Select(a =>
+                    new Agent()
+                    {
+                        Chat = a.Chat.Where(c => c.Statu == ChatStatu.Active).ToList(),
+                        Id = a.Id,
+                        Name = a.Name,
+                        Status = a.Status,
+                        TeamId = a.TeamId,
+                        Type = a.Type
+                    }
+                     ).ToList(),
+                    Id = t.Id,
+                    Status = t.Status,
+                    Type = t.Type,
+                }
+                ).FirstOrDefaultAsync(t => t.Status == TeamStatus.Active && t.Type != TeamShiftType.Overflow);
+            if (team != null)
+            {
+                foreach (var agent in team.Agents)
+                {
+                    if (await GetAgentChatAvailability(agent))
+                    {
+                        agents.Add(agent);
+                    }
                 }
             }
             return agents;
         }
-        public async Task<List<Agent>> CheckOverflowTeamAgents()
+
+        public async Task<List<Agent>> GetOverflowTeamAgents()
         {
             var agents = new List<Agent>();
-            var team = await context.Teams.Include(t => t.Agents).ThenInclude(chat => chat.Chat).FirstOrDefaultAsync(t => t.Status == TeamStatus.Active && t.Type == TeamType.Overflow);
-            foreach (var agent in team.Agents)
-            {
-
-                if (CheckAgentChatAvailability(agent))
+            var team = await context.Teams.Select(t =>
+                new Team()
                 {
-                    agents.Add(agent);
+                    Id = t.Id,
+                    Status = t.Status,
+                    Type = t.Type,
+                    Name = t.Name,
+                    Agents = t.Agents.Select(a =>
+                    new Agent()
+                    {
+                        Chat = a.Chat.Where(c => c.Statu == ChatStatu.Active).ToList(),
+                        Id = a.Id,
+                        Name = a.Name,
+                        Status = a.Status,
+                        TeamId = a.TeamId,
+                        Type = a.Type
+                    }
+                     ).ToList(),
+
+                }
+                ).FirstOrDefaultAsync(t => t.Status == TeamStatus.Active && t.Type == TeamShiftType.Overflow);
+            if (team != null)
+            {
+                foreach (var agent in team.Agents)
+                {
+                    if (await GetAgentChatAvailability(agent))
+                    {
+                        agents.Add(agent);
+                    }
                 }
             }
             return agents;
@@ -126,21 +213,65 @@ namespace Business.Services
         public async Task<Agent?> GetAvailableAgent()
         {
             var availableAgents = new List<Agent>();
-            var mainTeamAgents = await CheckMainTeamAgents();
+            var mainTeamAvailableAgents = await GetActiveTeamAgents();
 
-            if (!mainTeamAgents.Any())
+            if (!mainTeamAvailableAgents.Any())
             {
-                var overflowAgents = await CheckOverflowTeamAgents();
+                var overflowAgents = await GetOverflowTeamAgents();
                 availableAgents.AddRange(overflowAgents);
             }
             else
             {
-                availableAgents.AddRange(mainTeamAgents);
+                availableAgents.AddRange(mainTeamAvailableAgents);
             }
-          
 
+            return await Task.Run(() => availableAgents?.OrderBy(mta => mta.Type)?.OrderBy(mta => mta.Chat?.Count)?.FirstOrDefault());
+        }
 
-            return availableAgents?.OrderBy(mta => mta.Type)?.OrderBy(mta=>mta.Chat?.Count)?.FirstOrDefault();
+        public async Task<List<Team>> GetTeams()
+        {
+            return await context.Teams.ToListAsync();
+        }
+        public async Task<bool> CheckTeamIsActiveByTeamShiftType(TeamShiftType teamShiftType)
+        {
+            var isActive = await context.Teams.AnyAsync(t => t.Status == TeamStatus.Active && t.Type == teamShiftType);
+            return isActive;
+        }
+        public async Task<bool> CloseTeamThatNotActiveIfDoNotHaveActiveChats()
+        {
+            var teamThatWaitingActiveChats = await context.Teams.SingleOrDefaultAsync(t => t.Status == TeamStatus.WaitingActiveChats);
+            if (teamThatWaitingActiveChats == null)
+            {
+                return false;
+            }
+
+            return !await CheckTeamHaveAnyActiveChatsByTeamId(teamThatWaitingActiveChats.Id);
+        }
+        private async Task<bool> CheckTeamHaveAnyActiveChatsByTeamId(long teamId)
+        {
+            return await context.Chats.AnyAsync(c => c.Agent.TeamId == teamId); ;
+        }
+
+        public async Task<bool> PassiveTheStatusOfTheTeamWaitingForActiveChats()
+        {
+            try
+            {
+                var teamThatWaitingActiveChats = await context.Teams.SingleOrDefaultAsync(t => t.Status == TeamStatus.WaitingActiveChats);
+                if (teamThatWaitingActiveChats != null)
+                {
+                    teamThatWaitingActiveChats.Status = TeamStatus.Passive;
+                    await context.SaveChangesAsync();
+
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return false;
+
         }
     }
 

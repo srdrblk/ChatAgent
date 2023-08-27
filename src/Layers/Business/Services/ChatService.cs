@@ -4,6 +4,7 @@ using Common.Enums;
 using Core.Context;
 using Dtos;
 using Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Business.Services
 {
@@ -22,7 +23,7 @@ namespace Business.Services
             teamService = _teamService;
             chatHubService = _chatHubService;
         }
-        public async Task<BaseResponse<string>> CreateChat(SupportDto supportDto, long userId)
+        public async Task<BaseResponse<string>> AddChatToQueue(SupportDto supportDto, long userId)
         {
             try
             {
@@ -47,7 +48,19 @@ namespace Business.Services
             }
             return await Task.Run(() => new BaseResponse<string> { Statu = Common.Enums.ResponseStatu.Success });
         }
-        public async Task AddChat(Chat chat)
+
+        public async Task AddChatToQueue(Chat chat)
+        {
+           await Task.Run(() => chatQueue.AddChatToQueue(chat));
+        }
+        public async Task<Chat?> GetAndRemoveChatFromQueue()
+        {
+            if (chatQueue.Count == 0)
+                return null;
+            return await Task.Run(() => chatQueue.GetAndRemoveChatFromQueue());
+        }
+
+        public async Task SetChatToAgent(Chat chat)
         {
 
             context.Chats.Add(chat);
@@ -83,7 +96,7 @@ namespace Business.Services
 
         public async Task CheckDelayOfChats()
         {
-            var chats = context.Chats.Where(c => c.Statu == ChatStatu.Active);
+            var chats = await context.Chats.Where(c => c.Statu == ChatStatu.Active).ToListAsync();
             var chatIdsWillCloseDueToWaiting = new List<long>();
             foreach (var chat in chats)
             {
@@ -96,7 +109,16 @@ namespace Business.Services
                 }
             }
             await context.SaveChangesAsync();
-
+        }
+        public async Task<List<Chat>> GetActiveChats()
+        {
+            var activeChats = await context.Chats.Where(c => c.Statu == ChatStatu.Active).ToListAsync();
+            return activeChats;
+        }
+        public async Task<List<Chat>> GetActiveChatsByTeamId(long teamId)
+        {
+            var activeChats = await context.Chats.Where(c => c.Statu == ChatStatu.Active && c.Agent.TeamId == teamId).ToListAsync();
+            return activeChats;
         }
 
     }

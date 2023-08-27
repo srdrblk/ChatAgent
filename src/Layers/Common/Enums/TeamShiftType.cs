@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Common.Enums
 {
-    public enum TeamType
+    public enum TeamShiftType
     {
         None = 0,
         [WorkHour(Start: 9, End: 17)]

@@ -27,7 +27,8 @@ namespace Business.Services
                 if (chat!=null)
                 {
                     chat.Agent = availableAgent;
-                    await chatService.AddChat(chat);
+                    chat.AgentId = chat.AgentId;
+                    await chatService.SetChatToAgent(chat);
                     await chatHubService.ChatCreated(chat.User.Id, chat.Agent.Id, chat.Id);
                 }
             }

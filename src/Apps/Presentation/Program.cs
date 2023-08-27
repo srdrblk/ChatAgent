@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using ShiftControlWorker;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -70,7 +71,7 @@ builder.Services.AddAuthentication(x =>
                    };
                });
 //builder.Services.AddScoped<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddScoped<ChatQueue>();
+builder.Services.AddSingleton<ChatQueue>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ISupportService, SupportService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -81,6 +82,8 @@ builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<MonitorService.Monitor>();
 builder.Services.AddHostedService<AgentChatCoordinator>();
+builder.Services.AddHostedService<ShiftControl>();
+
 
 var app = builder.Build();
 
